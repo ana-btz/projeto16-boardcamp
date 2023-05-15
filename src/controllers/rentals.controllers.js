@@ -139,3 +139,40 @@ export async function deleteRent(req, res) {
     res.status(500).send(error.message);
   }
 }
+
+export async function finalizeRent(req, res) {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.sendStatus(400);
+
+  try {
+    const queryRent = await db.query(`SELECT * FROM rentals WHERE id = $1;`, [
+      id,
+    ]);
+    if (queryRent.rows.length === 0) return res.sendStatus(404);
+
+    if (!queryRent.rows[0].rentDate) return res.sendStatus(400);
+
+    const now = dayjs();
+    const expireAt = now
+      .add(+queryRent.rows[0].daysRented, "day")
+      .format("YYYY-MM-DD");
+    const delay = now.diff(expireAt, "day");
+    let delayFee = null;
+
+    if (now.isAfter(expireAt)) {
+      delayFee =
+        +delay *
+        (+queryRent.rows[0].originalPrice / +queryRent.rows[0].daysRented);
+    }
+
+    await db.query(
+      `UPDATE rentals SET "returnDate" = ${now.format(
+        "YYYY-MM-DD"
+      )}, "delayFee" = ${delayFee}
+        WHERE id = $1;`,
+      [id]
+    );
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
