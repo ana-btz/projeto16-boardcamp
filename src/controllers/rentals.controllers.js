@@ -12,10 +12,9 @@ export async function insertRent(req, res) {
     if (costumerResult.rows.length === 0)
       return res.status(400).send("Cliente não encontrado");
 
-    const gameResult = await db.query(
-      `SELECT * FROM games WHERE id = $1;`,
-      [gameId]
-    );
+    const gameResult = await db.query(`SELECT * FROM games WHERE id = $1;`, [
+      gameId,
+    ]);
     if (gameResult.rows.length === 0)
       return res.status(400).send("Jogo não encontrado");
 
@@ -23,7 +22,7 @@ export async function insertRent(req, res) {
     const rentalsQuantity = rentalsResponse.rows.length;
     const { stockTotal } = gameResult.rows[0];
 
-    if (rentalsQuantity > stockTotal)
+    if (rentalsQuantity >= stockTotal)
       return res.status(400).send("Estoque em falta");
 
     const { rows } = await db.query(
@@ -63,5 +62,24 @@ export async function insertRent(req, res) {
     res.sendStatus(201);
   } catch (error) {
     res.status(500).send(error, message);
+  }
+}
+
+export async function deleteRent(req, res) {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.sendStatus(400);
+
+  try {
+    const rentResult = await db.query(`SELECT * FROM rentals WHERE id = $1;`, [
+      id,
+    ]);
+    if (rentResult.rows.length === 0) return sendStatus(404);
+
+    const { returnDate } = rentResult.rows[0];
+    if (!returnDate) return res.status(400).send("Aluguel não finalizado");
+
+    res.sendStatus(200);
+  } catch (error) {
+    res.status(500).send(error.message);
   }
 }
