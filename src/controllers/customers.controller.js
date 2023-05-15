@@ -51,6 +51,8 @@ export async function getCustomerById(req, res) {
 export async function insertCustomer(req, res) {
   const { name, phone, cpf, birthday } = req.body;
 
+  if (isNaN(Number(cpf))) return res.sendStatus(400);
+
   try {
     const { rows } = await db.query(`SELECT * FROM customers WHERE cpf = $1`, [
       cpf,
