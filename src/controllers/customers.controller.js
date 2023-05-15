@@ -71,3 +71,28 @@ export async function insertCustomer(req, res) {
     res.status(500).send(error.message);
   }
 }
+
+export async function updateCustomer(req, res) {
+  const id = parseInt(req.params.id);
+  const { name, phone, cpf, birthday } = req.body;
+  if (isNaN(Number(cpf))) return res.sendStatus(400);
+
+  try {
+    const { rows } = await db.query(
+      `SELECT * FROM customers 
+        WHERE id = $1`,
+      [id]
+    );
+    if (cpf !== rows[0].cpf) return res.sendStatus(409);
+
+    await db.query(
+      `UPDATE customers SET name = '${name}', phone = ${phone}, birthday = '${birthday}'
+        WHERE id = $1;`,
+      [id]
+    );
+
+    res.sendStatus(200);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
