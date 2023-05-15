@@ -1,6 +1,62 @@
 import dayjs from "dayjs";
 import { db } from "../database/database.connection.js";
 
+export async function getRentals(req, res) {
+  try {
+    const queryRentals = await db.query(
+      `
+        SELECT rentals.*,
+                customers.id AS "customerId",
+                customers.name AS "customerName",
+                games.id AS "gameId",
+                games.name AS "gameName"
+            FROM rentals 
+            JOIN customers
+            ON customers.id = rentals."customerId"
+            JOIN games
+            ON games.id = rentals."gameId";
+      `
+    );
+
+    console.log(queryRentals.rows);
+    console.table(queryRentals.rows);
+
+    let rentals = [];
+
+    for (const rental of queryRentals.rows) {
+      const { rows } = await db.query(
+        `SELECT ("rentDate") as ExistingDateformat,
+          to_char("rentDate",'YYYY-MM-DD') As NewDateFormat FROM rentals Where id = $1;`,
+        [rental.id]
+      );
+      const rentDate = rows[0].newdateformat;
+
+      rentals.push({
+        id: rental.id,
+        customerId: rental.customerId,
+        gameId: rental.gameId,
+        rentDate: rentDate,
+        daysRented: rental.daysRented,
+        returnDate: rental.returnDate,
+        originalPrice: rental.originalPrice,
+        delayFee: rental.delayFee,
+        customer: {
+          id: rental.customerId,
+          name: rental.customerName,
+        },
+        game: {
+          id: rental.gameId,
+          name: rental.gameName,
+        },
+      });
+    }
+
+    res.status(200).send(rentals);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
+
 export async function insertRent(req, res) {
   const { customerId, gameId, daysRented } = req.body;
 
